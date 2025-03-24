@@ -1,7 +1,6 @@
 import pygame
 import sys
 import random
-import math
 
 pygame.init()
 
@@ -17,6 +16,7 @@ PRETO = (0, 0, 0)
 VERDE = (0, 255, 0)
 AZUL = (0, 0, 255)
 VERMELHO = (255, 0, 0)
+AMARELO = (255, 255, 0)
 
 # Carregar imagens
 try:
@@ -28,8 +28,8 @@ try:
     coracao_img = pygame.transform.scale(coracao_img, (30, 30))
     caveira_img = pygame.image.load("caveira.png")
     caveira_img = pygame.transform.scale(caveira_img, (30, 30))
-    tela_inicial_img = pygame.image.load("tela_inicial.png")  # Imagem da tela inicial
-    tela_inicial_img = pygame.transform.scale(tela_inicial_img, (LARGURA, ALTURA))  # Ajustando o tamanho para a tela
+    fruta_img = pygame.image.load("fruta.png")  # Adicione a imagem da fruta
+    fruta_img = pygame.transform.scale(fruta_img, (40, 40))  # Ajuste o tamanho da fruta
 except Exception as e:
     print(f"Erro ao carregar imagens: {e}")
     sys.exit()
@@ -40,6 +40,7 @@ def exibir_texto(texto, cor, tamanho, x, y):
     texto_surface = fonte.render(texto, True, cor)
     TELA.blit(texto_surface, (x, y))
 
+# Função para mostrar instruções
 def mostrar_instrucoes():
     TELA.fill(PRETO)
     exibir_texto("Instruções do Jogo", BRANCO, 40, LARGURA // 3, ALTURA // 6)
@@ -61,8 +62,9 @@ def mostrar_instrucoes():
                 aguardando = False
                 menu_inicial()
 
+# Função para o menu inicial
 def menu_inicial():
-    TELA.blit(tela_inicial_img, (0, 0))  # Exibindo a imagem de fundo da tela inicial
+    TELA.fill(PRETO)
     exibir_texto("Jogo da Nave", BRANCO, 50, LARGURA // 3, ALTURA // 4)
     exibir_texto("1. Iniciar Jogo", BRANCO, 30, LARGURA // 3, ALTURA // 2)
     exibir_texto("2. Instruções", BRANCO, 30, LARGURA // 3, ALTURA // 1.8)
@@ -77,7 +79,6 @@ def menu_inicial():
                 sys.exit()
             if evento.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                print(f"Mouse clicado em: ({mouse_x}, {mouse_y})")  # Debug
                 if LARGURA // 3 < mouse_x < LARGURA // 3 + 200 and ALTURA // 2 < mouse_y < ALTURA // 2 + 40:
                     iniciar_jogo()
                 if LARGURA // 3 < mouse_x < LARGURA // 3 + 200 and ALTURA // 1.8 < mouse_y < ALTURA // 1.8 + 40:
@@ -86,24 +87,17 @@ def menu_inicial():
                     pygame.quit()
                     sys.exit()
 
+# Função para iniciar o jogo
 def iniciar_jogo():
-    print("Iniciando o jogo...")  # Debug
-    # Variáveis do Jogo
     nave_x, nave_y = LARGURA // 2, ALTURA - 100
     velocidade_nave = 5
     tiros = []
     inimigos = []
+    frutas = []  # Lista para armazenar as frutas
     nivel = 1
     kills = 0
     vidas = 3
     jogo_ativo = True
-
-    # Flags para movimentação contínua
-    mov_esq, mov_dir, mov_cima, mov_baixo = False, False, False, False
-
-    # Variáveis para a animação do coração pulsando
-    coração_tamanho = 30
-    pulsando = True
 
     # Loop principal do Jogo
     while jogo_ativo:
@@ -115,34 +109,15 @@ def iniciar_jogo():
                 sys.exit()
             if evento.type == pygame.KEYDOWN:
                 if evento.key == pygame.K_LEFT:
-                    mov_esq = True
+                    nave_x -= velocidade_nave
                 if evento.key == pygame.K_RIGHT:
-                    mov_dir = True
+                    nave_x += velocidade_nave
                 if evento.key == pygame.K_UP:
-                    mov_cima = True
+                    nave_y -= velocidade_nave
                 if evento.key == pygame.K_DOWN:
-                    mov_baixo = True
+                    nave_y += velocidade_nave
                 if evento.key == pygame.K_e:  # Tecla 'E' para atirar
                     tiros.append([nave_x + 35, nave_y])
-            if evento.type == pygame.KEYUP:
-                if evento.key == pygame.K_LEFT:
-                    mov_esq = False
-                if evento.key == pygame.K_RIGHT:
-                    mov_dir = False
-                if evento.key == pygame.K_UP:
-                    mov_cima = False
-                if evento.key == pygame.K_DOWN:
-                    mov_baixo = False
-
-        # Movimentação contínua da nave
-        if mov_esq:
-            nave_x -= velocidade_nave
-        if mov_dir:
-            nave_x += velocidade_nave
-        if mov_cima:
-            nave_y -= velocidade_nave
-        if mov_baixo:
-            nave_y += velocidade_nave
 
         # Verificar limites da tela para a nave
         if nave_x < 0:
@@ -154,9 +129,19 @@ def iniciar_jogo():
         if nave_y > ALTURA - 80:
             nave_y = ALTURA - 80
 
-        # Adicionar inimigos de forma controlada
-        if len(inimigos) < 5:  # Limita a quantidade de inimigos na tela
+        # Movimentação dos tiros
+        for tiro in tiros[:]:
+            tiro[1] -= 10
+            if tiro[1] < 0:
+                tiros.remove(tiro)
+
+        # Adicionar inimigos (simples exemplo)
+        if len(inimigos) < 5:
             inimigos.append([random.randint(0, LARGURA - 80), -80])
+
+        # Adicionar frutas com probabilidade baixa (10%)
+        if random.random() < 0.01 and len(frutas) < 1:  # Apenas uma fruta pode aparecer de cada vez
+            frutas.append([random.randint(0, LARGURA - 40), -40])
 
         # Movimentação dos inimigos
         for inimigo in inimigos[:]:
@@ -179,67 +164,64 @@ def iniciar_jogo():
                 vidas -= 1
                 inimigos.remove(inimigo)
 
+        # Movimentação das frutas
+        for fruta in frutas[:]:
+            fruta[1] += 5  # Velocidade da fruta
+            if fruta[1] > ALTURA:
+                frutas.remove(fruta)
+
+            # Verificar colisão com a nave
+            if (nave_x < fruta[0] < nave_x + 80 and
+                    nave_y < fruta[1] < nave_y + 80):
+                vidas += 1  # Cura 1 vida
+                frutas.remove(fruta)
+
         # Desenhar elementos na tela
         TELA.blit(nave_img, (nave_x, nave_y))
 
-        for tiro in tiros[:]:
-            tiro[1] -= 10  # Movimento do tiro para cima
+        for tiro in tiros:
             pygame.draw.rect(TELA, VERDE, (tiro[0], tiro[1], 5, 10))
-            if tiro[1] < 0:  # Se o tiro sair da tela, remove ele
-                tiros.remove(tiro)
 
         for inimigo in inimigos:
             TELA.blit(inimigo_img, (inimigo[0], inimigo[1]))
 
-        # Animação do coração pulsando
-        if pulsando:
-            coração_tamanho += 2
-            if coração_tamanho > 35:
-                pulsando = False
-        else:
-            coração_tamanho -= 2
-            if coração_tamanho < 25:
-                pulsando = True
-        
-        # Exibir três corações no canto superior esquerdo, com animação pulsante
-        for i in range(vidas):  # Exibir um coração para cada vida
-            coracao_img_pulsando = pygame.transform.scale(coracao_img, (coração_tamanho, coração_tamanho))
-            TELA.blit(coracao_img_pulsando, (10 + (i * 35), 10))
+        for fruta in frutas:
+            TELA.blit(fruta_img, (fruta[0], fruta[1]))
 
-        # Exibir a contagem de kills com a imagem da caveira
-        TELA.blit(caveira_img, (LARGURA - 180, 10))
-        exibir_texto(f"{kills}", BRANCO, 30, LARGURA - 130, 10)
+        # Exibir informações
+        exibir_texto(f"Vidas: {vidas}", BRANCO, 30, 10, 10)
+        exibir_texto(f"Kills: {kills}", BRANCO, 30, 10, 50)
+        exibir_texto(f"Nível {nivel}", BRANCO, 30, 10, 90)
 
-        # Exibir o nível
-        if kills >= 15 * nivel:  # A cada 15 kills, sobe de nível
-            nivel += 1
-        exibir_texto(f"Nível {nivel}", BRANCO, 30, LARGURA // 2 - 50, 10)
+        if kills >= 15:
+            nivel = 2
+        if kills >= 30:
+            nivel = 3
+        if kills >= 45:
+            nivel = 4
 
-        # Verificar fim de jogo
+        pygame.display.update()
+
         if vidas <= 0:
             jogo_ativo = False
             game_over()
 
-        pygame.display.update()
         pygame.time.Clock().tick(60)
 
+# Tela de Game Over
 def game_over():
-    print("Game Over")  # Debug
     TELA.fill(PRETO)
     exibir_texto("Game Over", VERMELHO, 50, LARGURA // 3, ALTURA // 3)
-    exibir_texto("Pressione R para voltar ao menu", BRANCO, 30, LARGURA // 4, ALTURA // 2)
+    exibir_texto("Pressione qualquer tecla para reiniciar", BRANCO, 30, LARGURA // 3, ALTURA // 2)
     pygame.display.update()
 
-    aguardando = True
-    while aguardando:
+    esperando = True
+    while esperando:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if evento.type == pygame.KEYDOWN:
-                aguardando = False
-                menu_inicial()
+                iniciar_jogo()
 
-# Iniciar menu inicial
 menu_inicial()
-
